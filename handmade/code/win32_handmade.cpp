@@ -501,6 +501,12 @@ WinMain(HINSTANCE Instance,
 
 			GlobalRunning = true;
 
+			int16 *Samples = (int16 *)VirtualAlloc(0, SoundOutput.SecondaryBufferSize, 
+												   MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			// can use _alloca here, but outside of the loop
+			// because the compiler will only shrink the stack when it exits a function scope, not the loop scope
+			// ps: _alloca allocate storage on the stack, not the heap
+
 			LARGE_INTEGER LastCounter;
 			QueryPerformanceCounter(&LastCounter);
 
@@ -551,12 +557,14 @@ WinMain(HINSTANCE Instance,
 					}
 				}
 				
-				DWORD ByteToLock;
-				DWORD TargetCursor;
-				DWORD BytesToWrite;
-				DWORD PlayCursor;
-				DWORD WriteCursor;
+				DWORD ByteToLock = 0;
+				DWORD TargetCursor = 0;
+				DWORD BytesToWrite = 0;
+				DWORD PlayCursor = 0;
+				DWORD WriteCursor = 0;
 				bool32 SoundIsValid = false;
+				// TODO: Tighten up sound logic so that we know where we should be
+				// writing to and can anticipate the time spent in the game update.
 				if (SUCCEEDED(GlobalSecondaryBuffer->GetCurrentPosition(&PlayCursor, &WriteCursor)))
 				{
 					ByteToLock = (SoundOutput.RunningSampleIndex*SoundOutput.BytesPerSample) %
@@ -580,7 +588,6 @@ WinMain(HINSTANCE Instance,
 					SoundIsValid = true;
 				}
 				
-				int16 Samples[48000*2];
 				game_sound_output_buffer SoundBuffer = {};
 				SoundBuffer.SamplesPerSecond = SoundOutput.SamplesPerSecond;
 				SoundBuffer.SampleCount = BytesToWrite / SoundOutput.BytesPerSample;
